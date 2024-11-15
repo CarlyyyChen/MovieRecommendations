@@ -1,61 +1,94 @@
+import pandas as pd
 from surprise import Dataset, Reader, KNNWithMeans, accuracy
 from surprise.model_selection import train_test_split
 
-# TODO: import merged_data from processed data
-
-reader = Reader(rating_scale=(1,5))
-data = Dataset.load_from_df(merged_data[['UserID','MovieID','Rating']], reader)
-
-# Split into train and test sets
-trainset, testset = train_test_split(data, test_size=0.25)
-
-'''User based CF'''
-
-sim_options_user_based = {
+# Constants for similarity options
+SIM_OPTIONS_USER_BASED = {
     "name": "cosine",
-    "user_based": True,  # Compute similarities between users
+    "user_based": True  # Compute similarities between users
 }
 
-# Initialize the KNNWithMeans algorithm with the similarity options
-algo_user_based = KNNWithMeans(sim_options=sim_options_user_based)
-
-# Train the algorithm on the trainset
-algo_user_based.fit(trainset)
-
-# Test the algorithm on the test set
-predictions_user_based = algo_user_based.test(testset)
-
-# Calculate accuracy (e.g., RMSE)
-accuracy.rmse(predictions_user_based)
-# RMSE: 0.9417
-
-# Predict rating for a specific user and movie
-user_id = 1
-movie_id = 1193
-prediction = algo_user_based.predict(user_id, movie_id)
-print(prediction)
-
-'''
-Item based CF
-We determine the similarities based on the movies
-instead of looking at ratings from similar users
-we look at ratings from similar movies 
-'''
-
-sim_options_movie_based = {
+SIM_OPTIONS_ITEM_BASED = {
     "name": "cosine",
-    "user_based": False,  # Compute similarities between movies
+    "user_based": False  # Compute similarities between items (movies)
 }
 
-# Initialize the KNNWithMeans algorithm with the similarity options
-algo_movie_based = KNNWithMeans(sim_options=sim_options_movie_based)
 
-# Train the algorithm on the trainset
-algo_movie_based.fit(trainset)
+def load_data():
+    """
+    Load and preprocess the dataset from CSV files.
 
-# Test the algorithm on the test set
-predictions_movie_based = algo_movie_based.test(testset)
+    Returns:
+        data (Dataset): Surprise Dataset object for collaborative filtering.
+    """
+    # Load datasets
+    movies = pd.read_csv('../../data/processed/movies.csv')
+    users = pd.read_csv('../../data/processed/users.csv')
+    ratings = pd.read_csv('../../data/processed/ratings.csv')
 
-# Calculate accuracy (e.g., RMSE)
-accuracy.rmse(predictions_movie_based)
-# RMSE: 0.8963
+    # Merge dataframes to combine movie and user information with ratings
+    merged_data = pd.merge(ratings, movies, on='MovieID')
+    merged_data = pd.merge(merged_data, users, on='UserID')
+
+    # Prepare Surprise Dataset
+    reader = Reader(rating_scale=(1, 5))
+    data = Dataset.load_from_df(merged_data[['UserID', 'MovieID', 'Rating']], reader)
+
+    return data
+
+
+def train_and_evaluate(algo, trainset, testset):
+    """
+    Train the collaborative filtering model and evaluate its performance.
+
+    Args:
+        algo (AlgoBase): A Surprise collaborative filtering algorithm.
+        trainset (Trainset): The training data.
+        testset (list): The test data.
+
+    Returns:
+        float: The RMSE of the predictions.
+    """
+    # Train the algorithm
+    algo.fit(trainset)
+
+    # Test the algorithm
+    predictions = algo.test(testset)
+
+    # Calculate RMSE
+    rmse = accuracy.rmse(predictions, verbose=True)
+
+    return rmse, predictions
+
+
+def main():
+    """
+    Main function to load data, train and evaluate user-based and item-based models.
+    """
+    # Load the dataset
+    data = load_data()
+
+    # Split the dataset into training and test sets
+    trainset, testset = train_test_split(data, test_size=0.25)
+
+    # User-Based Collaborative Filtering
+    print("\n--- User-Based Collaborative Filtering ---")
+    algo_user = KNNWithMeans(sim_options=SIM_OPTIONS_USER_BASED)
+    user_rmse, user_predictions = train_and_evaluate(algo_user, trainset, testset)
+    print(f"User-Based Model RMSE: {user_rmse:.4f}")
+
+    # Predict a rating for a specific user and movie
+    user_id = 1
+    movie_id = 1193
+    user_prediction = algo_user.predict(user_id, movie_id)
+    print(f"Predicted rating for User {user_id} on Movie {movie_id}: {user_prediction.est:.2f}")
+
+    # Item-Based Collaborative Filtering
+    print("\n--- Item-Based Collaborative Filtering ---")
+    algo_item = KNNWithMeans(sim_options=SIM_OPTIONS_ITEM_BASED)
+    item_rmse, item_predictions = train_and_evaluate(algo_item, trainset, testset)
+    print(f"Item-Based Model RMSE: {item_rmse:.4f}")
+
+
+if __name__ == "__main__":
+    main()
