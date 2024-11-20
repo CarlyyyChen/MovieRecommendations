@@ -2,6 +2,8 @@ import pandas as pd
 import os
 from surprise import dump, Dataset, Reader, KNNWithMeans, accuracy
 from surprise.model_selection import train_test_split
+from collections import defaultdict
+import numpy as np
 
 # Constants
 SIM_OPTIONS = {
@@ -50,12 +52,111 @@ def load_data():
 
     return data, movies, ratings
 
+def get_top_n(predictions, n=10):
+    """Return the top-N recommendations for each user from a set of predictions."""
+    top_n = defaultdict(list)
+    for uid, iid, true_r, est, _ in predictions:
+        top_n[uid].append((iid, est))
+
+    # Sort the predictions for each user and retrieve the N highest ones.
+    for uid, user_ratings in top_n.items():
+        user_ratings.sort(key=lambda x: x[1], reverse=True)
+        top_n[uid] = user_ratings[:n]
+
+    return top_n
+
+def precision_recall_at_k(predictions, k=5, threshold=3.5):
+    """Calculate Precision@K and Recall@K for a set of predictions."""
+    user_metrics = defaultdict(lambda: {'precision': 0, 'recall': 0})
+
+    # Build a dictionary of user -> relevant items
+    relevant_items = defaultdict(set)
+    for uid, iid, true_r, est, _ in predictions:
+        if true_r >= threshold:  # Threshold for relevance
+            relevant_items[uid].add(iid)
+
+    # Get the top-N recommended items for each user
+    top_n = get_top_n(predictions, n=k)
+
+    # Calculate precision and recall for each user
+    precisions, recalls = [], []
+    for uid, user_recommendations in top_n.items():
+        recommended_items = set(iid for iid, _ in user_recommendations)
+        true_positives = relevant_items[uid] & recommended_items
+
+        precision = len(true_positives) / len(recommended_items) if recommended_items else 0
+        recall = len(true_positives) / len(relevant_items[uid]) if relevant_items[uid] else 0
+
+        precisions.append(precision)
+        recalls.append(recall)
+        user_metrics[uid] = {'precision': precision, 'recall': recall}
+
+    # Return average precision and recall
+    return sum(precisions) / len(precisions), sum(recalls) / len(recalls), user_metrics
+
+def dcg_at_k(relevance_scores, k):
+    """Calculate DCG@K."""
+    relevance_scores = np.asfarray(relevance_scores)[:k]
+    if relevance_scores.size == 0:
+        return 0.0
+    return np.sum(relevance_scores / np.log2(np.arange(2, relevance_scores.size + 2)))
+
+
+def ndcg_at_k(predictions, k=5, threshold=3.5):
+    """
+    Calculate NDCG@K for all users.
+
+    Parameters:
+    - predictions: List of (user_id, item_id, true_rating, est_rating, details)
+    - k: Number of top recommendations to consider
+    - threshold: Minimum rating to consider an item as relevant
+
+    Returns:
+    - Average NDCG@K for all users
+    """
+    # Build a dictionary of user -> (true ratings, predicted scores)
+    user_relevance = defaultdict(list)
+    for uid, iid, true_r, est, _ in predictions:
+        user_relevance[uid].append((est, true_r >= threshold))  # True relevance is binary (1 if relevant, 0 otherwise)
+
+    ndcg_scores = []
+    for uid, items in user_relevance.items():
+        # Sort items by predicted scores
+        items.sort(key=lambda x: x[0], reverse=True)
+
+        # Get relevance scores for the top K items
+        relevance_scores = [rel for _, rel in items[:k]]
+
+        # Compute DCG and IDCG
+        dcg = dcg_at_k(relevance_scores, k)
+        ideal_relevance_scores = sorted(relevance_scores, reverse=True)
+        idcg = dcg_at_k(ideal_relevance_scores, k)
+
+        # Compute NDCG
+        ndcg = dcg / idcg if idcg > 0 else 0.0
+        ndcg_scores.append(ndcg)
+
+    return np.mean(ndcg_scores)
+
 
 def evaluate_model(algo, testset, model_name):
     """Evaluate a collaborative filtering model on a test set."""
     print(f"\n--- Evaluating {model_name} Collaborative Filtering Model ---")
     predictions = algo.test(testset)
-    return accuracy.rmse(predictions, verbose=True)
+    # Calculate MAE and RMSE
+    mae = accuracy.mae(predictions, verbose=True)
+    rmse = accuracy.rmse(predictions, verbose=True)
+
+    # Calculate Precision@K and Recall@K
+    precision, recall, user_metrics = precision_recall_at_k(predictions, k=5, threshold=3.5)
+    print(f"Precision@K: {precision:.4f}")
+    print(f"Recall@K: {recall:.4f}")
+
+    # Calculate NDCG@K
+    ndcg = ndcg_at_k(predictions, k=5, threshold=3.5)
+    print(f"NDCG@K: {ndcg:.4f}")
+
+    return mae, rmse, precision, recall
 
 
 def recommend_top_movies(algo, user_id, movies, ratings, top_n=TOP_N):
