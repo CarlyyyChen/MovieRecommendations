@@ -3,3 +3,4 @@ __pycache__/
 *.py[cod]
 models/collaborative_filtering/*.pkl
 models/collaborative_filtering/*.pkl.gz
+models/neural_collaborative_filtering/*.pkl
