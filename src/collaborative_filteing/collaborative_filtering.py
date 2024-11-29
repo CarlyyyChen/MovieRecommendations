@@ -17,8 +17,8 @@ SIM_OPTIONS = {
     },
 }
 MODEL_PATHS = {
-    "user": '../../models/collaborative_filtering/user_based_model.pkl',
-    "item": '../../models/collaborative_filtering/item_based_model.pkl',
+    "user": '../../models/collaborative_filtering/user_based/user_based_model.pkl',
+    "item": '../../models/collaborative_filtering/item_based/item_based_model.pkl',
 }
 TOP_N = 5  # Number of recommendations to display
 
