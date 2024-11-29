@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
 TOP_N = 5
-MODEL_PATH = "../../models/neural_collaborative_filtering/ncf_model.pkl"  # Path to save the model
+MODEL_PATH = "../../../models/neural_collaborative_filtering/ncf_model.pkl"  # Path to save the model
 
 # Function to save the model
 def save_model(model, model_path):
@@ -232,12 +232,13 @@ def get_user_input():
 # Main function
 def main():
     # Paths to the datasets
-    movies_path = "../../data/processed/movies.csv"
-    users_path = "../../data/processed/users.csv"
-    ratings_path = "../../data/processed/ratings.csv"
+    # movies_path = "../../data/processed/movies.csv"
+    # users_path = "../../data/processed/users.csv"
+    # ratings_path = "../../data/processed/ratings.csv"
 
     # Load and merge data
-    data = load_and_merge_data(movies_path, users_path, ratings_path)
+    # data = load_and_merge_data(movies_path, users_path, ratings_path)
+    data = pd.read_csv('../../../data/Final_data/Final_data.csv')
 
     # Preprocessing: Convert UserID and MovieID to categorical codes
     data['UserID'] = data['UserID'].astype('category').cat.codes
@@ -269,8 +270,8 @@ def main():
         model = load_model(MODEL_PATH)
     else:
         # Initialize and train the model
-        # model = NCFModel(num_users, num_movies, embed_dim)
-        model = NeuMFModel(num_users, num_movies, embed_dim)
+        model = NCFModel(num_users, num_movies, embed_dim)
+        # model = NeuMFModel(num_users, num_movies, embed_dim)
         criterion = torch.nn.MSELoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
