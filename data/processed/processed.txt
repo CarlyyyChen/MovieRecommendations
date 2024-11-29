@@ -1,2 +1,5 @@
 Run the pre-processing file to store the data(cannot upload because of large size)
 Download from here(https://drive.google.com/file/d/1527-ogjyj5KTix3ePWO7Tux9zVlWT4CP/view?usp=drive_link)
+
+movies.csv: download from https://drive.google.com/file/d/14mbclt5hjMkD2WqinG9nhiePN83_Uvmj/view?usp=drive_link
+ratings.csv: download from https://drive.google.com/file/d/1UWndcu7nvjvAVy-MFpgvRPIip_poWRnw/view?usp=drive_link
