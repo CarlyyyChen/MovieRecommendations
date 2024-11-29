@@ -41,11 +41,14 @@ def load_model(filename):
 
 def load_data():
     """Load and preprocess the dataset from CSV files."""
+    # the import of movies and ratings file are for movie recommendations output
     movies = pd.read_csv('../../data/processed/movies.csv')
-    users = pd.read_csv('../../data/processed/users.csv')
+    # users = pd.read_csv('../../data/processed/users.csv')
     ratings = pd.read_csv('../../data/processed/ratings.csv')
-    merged_data = pd.merge(ratings, movies, on='MovieID')
-    merged_data = pd.merge(merged_data, users, on='UserID')
+    # merged_data = pd.merge(ratings, movies, on='MovieID')
+    # merged_data = pd.merge(merged_data, users, on='UserID')
+    # directly using the cleaned dataset
+    merged_data = pd.read_csv('../../data/Final_data/Final_data.csv')
 
     reader = Reader(rating_scale=(1, 5))
     data = Dataset.load_from_df(merged_data[['UserID', 'MovieID', 'Rating']], reader)
