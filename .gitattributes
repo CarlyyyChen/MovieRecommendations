@@ -6,3 +6,4 @@ item_similarity.pkl filter=lfs diff=lfs merge=lfs -text
 Final_data.csv filter=lfs diff=lfs merge=lfs -text
 ratings.csv filter=lfs diff=lfs merge=lfs -text
 ncf_model.pth filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
